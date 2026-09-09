@@ -503,7 +503,7 @@ test("task --resume-last resumes the latest persisted task thread", () => {
   assert.equal(result.stdout, "Resumed the prior run.\nFollow-up prompt accepted.\n");
 });
 
-test("task-resume-candidate returns the latest rescue thread from the current session", () => {
+test("task-resume-candidate returns the latest task thread from the current session", () => {
   const workspace = makeTempDir();
   const stateDir = resolveStateDir(workspace);
   const jobsDir = path.join(stateDir, "jobs");
@@ -533,7 +533,7 @@ test("task-resume-candidate returns the latest rescue thread from the current se
             jobClass: "task",
             sessionId: "sess-other",
             threadId: "thr_other",
-            summary: "Old rescue run",
+            summary: "Old task run",
             updatedAt: "2026-03-24T20:05:00.000Z"
           },
           {
@@ -952,6 +952,7 @@ test("task --background enqueues a detached worker and exposes per-job status", 
   const waitedPayload = JSON.parse(waitedStatus.stdout);
   assert.equal(waitedPayload.job.id, launchPayload.jobId);
   assert.equal(waitedPayload.job.status, "completed");
+  assert.equal(waitedPayload.job.kindLabel, "task");
 
   const resultPayload = await waitFor(() => {
     const result = run("node", [SCRIPT, "result", launchPayload.jobId, "--json"], {
@@ -1349,6 +1350,7 @@ test("status --wait times out cleanly when a job is still active", () => {
   const payload = JSON.parse(result.stdout);
   assert.equal(payload.job.id, "task-live");
   assert.equal(payload.job.status, "running");
+  assert.equal(payload.job.kindLabel, "task");
   assert.equal(payload.waitTimedOut, true);
 });
 

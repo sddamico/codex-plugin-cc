@@ -11,7 +11,8 @@ they already have.
 
 - `/codex:review` for a normal read-only Codex review
 - `/codex:adversarial-review` for a steerable challenge review
-- `/codex:rescue`, `/codex:transfer`, `/codex:status`, `/codex:result`, and `/codex:cancel` to delegate work, hand off sessions, and manage background jobs
+- `codex:codex-agent` for general-purpose subagent work orchestrated by Claude
+- `/codex:agent`, `/codex:transfer`, `/codex:status`, `/codex:result`, and `/codex:cancel` to delegate work, hand off sessions, and manage background jobs
 
 ## Requirements
 
@@ -62,7 +63,7 @@ If Codex is installed but not logged in yet, run:
 After install, you should see:
 
 - the slash commands listed below
-- the `codex:codex-rescue` subagent in `/agents`
+- the `codex:codex-agent` subagent in `/agents`
 
 One simple first run is:
 
@@ -74,19 +75,27 @@ One simple first run is:
 
 ## Usage
 
+### Codex agent
+
+Claude can invoke `codex:codex-agent` at any time through the `Agent` tool with `subagent_type: "codex:codex-agent"`. It can delegate tasks of any size, including implementation, debugging, investigation, planning, research, and review. No explicit request for Codex or prior failed attempt is required.
+
+Claude assigns each task with the relevant context, scope, constraints, and acceptance criteria, chooses foreground or background execution, and uses the returned Codex result to continue the work. Each independent assignment starts a fresh Codex thread; explicit follow-ups can resume the latest task in the current Claude session. Implementation and fix assignments allow edits; review, diagnosis, planning, and research assignments are read-only unless edits are also authorized.
+
+Use `/codex:agent` to delegate a task explicitly. This command returns Codex's output verbatim.
+
 ### `/codex:review`
 
 Runs a normal Codex review on your current work. It gives you the same quality of code review as running `/review` inside Codex directly.
 
 > [!NOTE]
-> Code review especially for multi-file changes might take a while. It's generally recommended to run it in the background.
+> Reviews always run in the background. Claude can invoke either review command directly without asking you to choose an execution mode.
 
 Use it when you want:
 
 - a review of your current uncommitted changes
 - a review of your branch compared to a base branch like `main`
 
-Use `--base <ref>` for branch review. It also supports `--wait` and `--background`. It is not steerable and does not take custom focus text. Use [`/codex:adversarial-review`](#codexadversarial-review) when you want to challenge a specific decision or risk area.
+Use `--base <ref>` for branch review. It always runs in the background. It is not steerable and does not take custom focus text. Use [`/codex:adversarial-review`](#codexadversarial-review) when you want to challenge a specific decision or risk area.
 
 Examples:
 
@@ -105,7 +114,7 @@ Runs a **steerable** review that questions the chosen implementation and design.
 It can be used to pressure-test assumptions, tradeoffs, failure modes, and whether a different approach would have been safer or simpler.
 
 It uses the same review target selection as `/codex:review`, including `--base <ref>` for branch review.
-It also supports `--wait` and `--background`. Unlike `/codex:review`, it can take extra focus text after the flags.
+It always runs in the background and can be invoked directly by Claude. Unlike `/codex:review`, it can take extra focus text after the flags.
 
 Use it when you want:
 
@@ -123,13 +132,15 @@ Examples:
 
 This command is read-only. It does not fix code.
 
-### `/codex:rescue`
+### `/codex:agent`
 
-Hands a task to Codex through the `codex:codex-rescue` subagent.
+Hands a task to Codex through the `codex:codex-agent` subagent.
 
 Use it when you want Codex to:
 
 - investigate a bug
+- implement a feature
+- research or plan a change
 - try a fix
 - continue a previous Codex task
 - take a faster or cheaper pass with a smaller model
@@ -137,17 +148,17 @@ Use it when you want Codex to:
 > [!NOTE]
 > Depending on the task and the model you choose these tasks might take a long time and it's generally recommended to force the task to be in the background or move the agent to the background.
 
-It supports `--background`, `--wait`, `--resume`, and `--fresh`. If you omit `--resume` and `--fresh`, the plugin can offer to continue the latest rescue thread for this repo.
+It supports `--background`, `--wait`, `--resume`, and `--fresh`. If you omit `--resume` and `--fresh`, the plugin can offer to continue the latest task thread for this repo.
 
 Examples:
 
 ```bash
-/codex:rescue investigate why the tests started failing
-/codex:rescue fix the failing test with the smallest safe patch
-/codex:rescue --resume apply the top fix from the last run
-/codex:rescue --model gpt-5.4-mini --effort medium investigate the flaky integration test
-/codex:rescue --model spark fix the issue quickly
-/codex:rescue --background investigate the regression
+/codex:agent investigate why the tests started failing
+/codex:agent fix the failing test with the smallest safe patch
+/codex:agent --resume apply the top fix from the last run
+/codex:agent --model gpt-5.4-mini --effort medium investigate the flaky integration test
+/codex:agent --model spark fix the issue quickly
+/codex:agent --background investigate the regression
 ```
 
 You can also just ask for a task to be delegated to Codex:
@@ -160,7 +171,7 @@ Ask Codex to redesign the database connection to be more resilient.
 
 - if you do not pass `--model` or `--effort`, Codex chooses its own defaults.
 - if you say `spark`, the plugin maps that to `gpt-5.3-codex-spark`
-- follow-up rescue requests can continue the latest Codex task in the repo
+- follow-up delegated requests can continue the latest Codex task in the repo
 
 ### `/codex:transfer`
 
@@ -247,14 +258,14 @@ When the review gate is enabled, the plugin uses a `Stop` hook to run a targeted
 ### Hand A Problem To Codex
 
 ```bash
-/codex:rescue investigate why the build is failing in CI
+/codex:agent investigate why the build is failing in CI
 ```
 
 ### Start Something Long-Running
 
 ```bash
 /codex:adversarial-review --background
-/codex:rescue --background investigate the flaky test
+/codex:agent --background investigate the flaky test
 ```
 
 Then check in with:
